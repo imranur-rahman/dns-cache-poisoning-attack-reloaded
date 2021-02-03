@@ -1,0 +1,109 @@
+----------Iteration 1 is starting.----------
+do_one_attack_chunk 32768,50,0
+Begin emission:
+Time needed for generating packets: 0.010449221000000009
+Finished sending 1 packets.
+
+Received 3 packets, got 1 answers, remaining 0 packets
+Time needed for sending 50 packets: 0.11974733800000015
+Time needed for sending and receiving verification packet: 0.004697402000000128
+Got ICMP port unreachable message. No port is open.
+Got reply from do_one_attack_chunk : -1
+System wide time needed in this loop: 2.916285338000307
+Process wide time needed in this loop: 0.1440587459999999
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.144	1	0.144	0.144	0.144	do_one_chunk_of_attack
+0.144 Total Time
+----------Iteration 1 is completed.----------
+----------Iteration 2 is starting.----------
+do_one_attack_chunk 32768,50,0
+Begin emission:
+Finished sending 1 packets.
+
+Received 1 packets, got 1 answers, remaining 0 packets
+Time needed for generating packets: 0.01344641000000002
+Time needed for sending 50 packets: 0.09982695900000005
+Time needed for sending and receiving verification packet: 0.004275307999999978
+Got ICMP port unreachable message. No port is open.
+Got reply from do_one_attack_chunk : -1
+System wide time needed in this loop: 2.8284261810003954
+Process wide time needed in this loop: 0.1238645650000001
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.268	2	0.124	0.144	0.134	do_one_chunk_of_attack
+0.268 Total Time
+----------Iteration 2 is completed.----------
+----------Iteration 3 is starting.----------
+do_one_attack_chunk 32768,50,0
+Begin emission:
+Finished sending 1 packets.
+
+Received 1 packets, got 1 answers, remaining 0 packets
+Time needed for generating packets: 0.011222210999999982
+Time needed for sending 50 packets: 0.08765025500000001
+Time needed for sending and receiving verification packet: 0.004298478000000161
+Got ICMP port unreachable message. No port is open.
+Got reply from do_one_attack_chunk : -1
+System wide time needed in this loop: 2.994771628000308
+Process wide time needed in this loop: 0.10966950099999995
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.377	3	0.109	0.144	0.126	do_one_chunk_of_attack
+0.377 Total Time
+----------Iteration 3 is completed.----------
+----------Iteration 4 is starting.----------
+do_one_attack_chunk 32768,50,0
+Begin emission:
+Finished sending 1 packets.
+
+Received 1 packets, got 1 answers, remaining 0 packets
+Time needed for generating packets: 0.011481615999999972
+Time needed for sending 50 packets: 0.10718022700000018
+Time needed for sending and receiving verification packet: 0.0033138710000000238
+Got ICMP port unreachable message. No port is open.
+Got reply from do_one_attack_chunk : -1
+System wide time needed in this loop: 2.857722818000184
+Process wide time needed in this loop: 0.128059924
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.505	4	0.109	0.144	0.126	do_one_chunk_of_attack
+0.505 Total Time
+----------Iteration 4 is completed.----------
+----------Iteration 5 is starting.----------
+do_one_attack_chunk 32768,50,0
+Begin emission:
+Finished sending 1 packets.
+
+Received 1 packets, got 1 answers, remaining 0 packets
+Time needed for generating packets: 0.019243214000000064
+Time needed for sending 50 packets: 0.09961635300000005
+Time needed for sending and receiving verification packet: 0.004574517
+Got ICMP port unreachable message. No port is open.
+Got reply from do_one_attack_chunk : -1
+System wide time needed in this loop: 2.6847008610002376
+Process wide time needed in this loop: 0.12993964700000005
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.635	5	0.109	0.144	0.127	do_one_chunk_of_attack
+0.635 Total Time
+----------Iteration 5 is completed.----------
+----------Iteration 6 is starting.----------
+do_one_attack_chunk 32768,50,0
+Begin emission:
+Finished sending 1 packets.
+
+Received 1 packets, got 1 answers, remaining 0 packets
+Time needed for generating packets: 0.011888873999999827
+Time needed for sending 50 packets: 0.08270167000000006
+Time needed for sending and receiving verification packet: 0.004486319000000183
+Got ICMP port unreachable message. No port is open.
+Got reply from do_one_attack_chunk : -1
+System wide time needed in this loop: 2.5981032100007724
+Process wide time needed in this loop: 0.10443732399999983
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.739	6	0.104	0.144	0.123	do_one_chunk_of_attack
+0.739 Total Time
+----------Iteration 6 is completed.----------
+----------Iteration 7 is starting.----------
+do_one_attack_chunk 32768,50,0
+Begin emission:
+Finished sending 1 packets.
+
+Received 1 packets, got 1 answers, remaining 0 packets
+Time needed for generating packets: 0.014740109999999973
