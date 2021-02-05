@@ -1,1 +1,108 @@
-
+----------Iteration 1 is starting.----------
+do_one_attack_chunk 32768,50,0
+Time needed for generating packets: 0.01395112799999998
+Time needed for sending 50 packets: 0.053818729000000065
+Time needed for sending and receiving verification packet: 0.002824226999999957
+Yaaay, got ICMP port unreachable message. At least one port is open.
+Got reply from do_one_attack_chunk : 32768
+32792
+do_one_attack_chunk 32768,25,25
+Time needed for generating packets: 0.015819959999999966
+Time needed for sending 50 packets: 0.05472460899999998
+Time needed for sending and receiving verification packet: 0.005811363000000069
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32780
+do_one_attack_chunk 32768,13,37
+Time needed for generating packets: 0.013787543000000069
+Time needed for sending 50 packets: 0.05413732199999988
+Time needed for sending and receiving verification packet: 0.0030868820000000685
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32774
+do_one_attack_chunk 32768,7,43
+Time needed for generating packets: 0.011582896000000176
+Time needed for sending 50 packets: 0.05281732199999989
+Time needed for sending and receiving verification packet: 0.0037107520000001504
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32771
+do_one_attack_chunk 32768,4,46
+Time needed for generating packets: 0.01141374500000003
+Time needed for sending 50 packets: 0.05096430099999982
+Time needed for sending and receiving verification packet: 0.00486887200000008
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32769
+do_one_attack_chunk 32768,2,48
+Time needed for generating packets: 0.022566733999999977
+Time needed for sending 50 packets: 0.08038747300000004
+Time needed for sending and receiving verification packet: 0.005095628000000074
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32768
+do_one_attack_chunk 32768,1,49
+Time needed for generating packets: 0.010765979999999953
+Time needed for sending 50 packets: 0.05139967499999987
+Time needed for sending and receiving verification packet: 0.0042525029999997965
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32768
+do_one_attack_chunk 32768,1,49
+Time needed for generating packets: 0.011953056999999934
+Time needed for sending 50 packets: 0.04775560400000001
+Time needed for sending and receiving verification packet: 0.004159197999999975
+No port is open. IMCP rate limit is already drained.
+port found : -1
+System wide time needed in this loop: 2.0325012570028775
+Process wide time needed in this loop: 0.6012452330000001
+do_one_attack_chunk 32818,50,0
+Time needed for generating packets: 0.01497674300000007
+Time needed for sending 50 packets: 0.054171411
+Time needed for sending and receiving verification packet: 0.005329522000000031
+Yaaay, got ICMP port unreachable message. At least one port is open.
+Got reply from do_one_attack_chunk : 32818
+32842
+do_one_attack_chunk 32818,25,25
+Time needed for generating packets: 0.013828916000000024
+Time needed for sending 50 packets: 0.046205264000000135
+Time needed for sending and receiving verification packet: 0.006408420000000081
+No port is open. IMCP rate limit is already drained.
+do_one_attack_chunk 32843,25,25
+Time needed for generating packets: 0.014800499999999994
+Time needed for sending 50 packets: 0.047049676000000096
+Time needed for sending and receiving verification packet: 0.005854245999999952
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32855
+do_one_attack_chunk 32843,13,37
+Time needed for generating packets: 0.01634788399999998
+Time needed for sending 50 packets: 0.04295820799999994
+Time needed for sending and receiving verification packet: 0.009281118999999949
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32849
+do_one_attack_chunk 32843,7,43
+Time needed for generating packets: 0.012733263999999966
+Time needed for sending 50 packets: 0.05030872200000003
+Time needed for sending and receiving verification packet: 0.00516674100000003
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32846
+do_one_attack_chunk 32843,4,46
+Time needed for generating packets: 0.009264248999999891
+Time needed for sending 50 packets: 0.047526661000000026
+Time needed for sending and receiving verification packet: 0.005368413999999877
+No port is open. IMCP rate limit is already drained.
+do_one_attack_chunk 32847,3,47
+Time needed for generating packets: 0.013394535000000207
+Time needed for sending 50 packets: 0.03488421999999991
+Time needed for sending and receiving verification packet: 0.005789243999999805
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32848
+do_one_attack_chunk 32847,2,48
+Time needed for generating packets: 0.014228373999999988
+Time needed for sending 50 packets: 0.05710734900000025
+Time needed for sending and receiving verification packet: 0.007928242999999835
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32847
+do_one_attack_chunk 32847,1,49
+Time needed for generating packets: 0.02245349199999991
+Time needed for sending 50 packets: 0.04295894000000011
+Time needed for sending and receiving verification packet: 0.0069887949999998256
+Yaaay, got ICMP port unreachable message. At least one port is open.
+32847
+do_one_attack_chunk 32847,1,49
+Time needed for generating packets: 0.011137289000000106
+Time needed for sending 50 packets: 0.07288980100000009
