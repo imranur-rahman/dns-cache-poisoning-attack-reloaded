@@ -1,76 +1,52 @@
 ----------Iteration 1 is starting.----------
-do_one_attack_chunk 32768,50,0
+do_one_attack_chunk 2550,50,0
 Begin emission:
 Finished sending 1 packets.
-Time needed for generating packets: 109 ms
-Time needed for sending 50 packets: 11 ms
-Time needed for sending and receiving verification packet: 137 ms
-No port is open. IMCP rate limit is already drained.
+Received no answer. No port is open. IMCP rate limit is already drained.
 Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 309 ms
-do_one_attack_chunk 32818,50,0
-Time needed for generating packets: 55 ms
-Time needed for sending 50 packets: 7 ms
-Time needed for sending and receiving verification packet: 141 ms
-No port is open. IMCP rate limit is already drained.
+System wide time needed in this loop once: 217 ms
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.217	1	0.217	0.217	0.217	do_one_chunk_of_attack
+0.217 Total Time
+----------Iteration 1 is completed.----------
+----------Iteration 2 is starting.----------
+do_one_attack_chunk 2550,50,0
+Begin emission:
+Finished sending 1 packets.
+Received no answer. No port is open. IMCP rate limit is already drained.
 Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 256 ms
-do_one_attack_chunk 32868,50,0
-Time needed for generating packets: 71 ms
-Time needed for sending 50 packets: 1 ms
-Time needed for sending and receiving verification packet: 153 ms
-No port is open. IMCP rate limit is already drained.
+System wide time needed in this loop once: 149 ms
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.366	2	0.149	0.217	0.183	do_one_chunk_of_attack
+0.366 Total Time
+----------Iteration 2 is completed.----------
+----------Iteration 3 is starting.----------
+do_one_attack_chunk 2550,50,0
+Begin emission:
+Finished sending 1 packets.
+Received no answer. No port is open. IMCP rate limit is already drained.
 Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 276 ms
-do_one_attack_chunk 32918,50,0
-Time needed for generating packets: 76 ms
-Time needed for sending 50 packets: 9 ms
-Time needed for sending and receiving verification packet: 148 ms
-No port is open. IMCP rate limit is already drained.
+System wide time needed in this loop once: 151 ms
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.518	3	0.149	0.217	0.173	do_one_chunk_of_attack
+0.518 Total Time
+----------Iteration 3 is completed.----------
+----------Iteration 4 is starting.----------
+do_one_attack_chunk 2550,50,0
+Begin emission:
+Finished sending 1 packets.
+Received no answer. No port is open. IMCP rate limit is already drained.
 Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 284 ms
-do_one_attack_chunk 32968,50,0
-Time needed for generating packets: 89 ms
-Time needed for sending 50 packets: 4 ms
-Time needed for sending and receiving verification packet: 143 ms
-No port is open. IMCP rate limit is already drained.
-Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 300 ms
-do_one_attack_chunk 33018,50,0
-Time needed for generating packets: 91 ms
-Time needed for sending 50 packets: 4 ms
-Time needed for sending and receiving verification packet: 145 ms
-No port is open. IMCP rate limit is already drained.
-Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 291 ms
-do_one_attack_chunk 33068,50,0
-Time needed for generating packets: 83 ms
-Time needed for sending 50 packets: 2 ms
-Time needed for sending and receiving verification packet: 139 ms
-No port is open. IMCP rate limit is already drained.
-Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 276 ms
-do_one_attack_chunk 33118,50,0
-Time needed for generating packets: 54 ms
-Time needed for sending 50 packets: 2 ms
-Time needed for sending and receiving verification packet: 131 ms
-No port is open. IMCP rate limit is already drained.
-Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 240 ms
-do_one_attack_chunk 33168,50,0
-Time needed for generating packets: 47 ms
-Time needed for sending 50 packets: 2 ms
-Time needed for sending and receiving verification packet: 149 ms
-No port is open. IMCP rate limit is already drained.
-Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 248 ms
-do_one_attack_chunk 33218,50,0
-Time needed for generating packets: 56 ms
-Time needed for sending 50 packets: 1 ms
-Time needed for sending and receiving verification packet: 136 ms
-No port is open. IMCP rate limit is already drained.
-Got reply from do_one_attack_chunk : -1
-System wide time needed in this loop once: 245 ms
-do_one_attack_chunk 33268,50,0
-Time needed for generating packets: 44 ms
-Time needed for sending 50 packets: 3 ms
+System wide time needed in this loop once: 168 ms
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	0.686	4	0.149	0.217	0.171	do_one_chunk_of_attack
+0.686 Total Time
+----------Iteration 4 is completed.----------
+
+Received 20 packets, got 0 answers, remaining 1 packets
+
+Received 14 packets, got 0 answers, remaining 1 packets
+
+Received 18 packets, got 0 answers, remaining 1 packets
+
+Received 14 packets, got 0 answers, remaining 1 packets
