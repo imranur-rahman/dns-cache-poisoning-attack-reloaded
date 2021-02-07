@@ -1,53 +1,46 @@
 ----------Iteration 1 is starting.----------
-attack_burst: (port_start, # of probe, # of padding):50000,50,0Begin emission:
-
+attack_burst: (port_start, # of probe, # of padding):50000,200,0
+Begin emission:
+Finished sending 1 packets.
+No port is open. IMCP rate limit is already drained.
+Got reply from do_one_attack_chunk : -1
+time needed in this iteration of loop: 1488 ms
+attack_burst: (port_start, # of probe, # of padding):50200,200,0
+Yaaay, got ICMP port unreachable message. At least one port is open.
+Got reply from do_one_attack_chunk : 50200
+attack_burst: (port_start, # of probe, # of padding):50200,100,100
+No port is open. IMCP rate limit is already drained.
+attack_burst: (port_start, # of probe, # of padding):50300,100,100
+No port is open. IMCP rate limit is already drained.
+no open port found in bin search : -1
+time needed in this iteration of loop: 3940 ms
+Percent	Sum	Calls	Min	Max	Mean	Function
+100.0	5.428	4	1.263	1.488	1.357	do_one_chunk_of_attack
+5.428 Total Time
+----------Iteration 1 is completed.----------
+----------Iteration 2 is starting.----------
+attack_burst: (port_start, # of probe, # of padding):50000,200,0
+Begin emission:
 Finished sending 1 packets.
 Yaaay, got ICMP port unreachable message. At least one port is open.
 Got reply from do_one_attack_chunk : 50000
-attack_burst: (port_start, # of probe, # of padding):50000,25,25
+attack_burst: (port_start, # of probe, # of padding):50000,100,100
 Yaaay, got ICMP port unreachable message. At least one port is open.
-attack_burst: (port_start, # of probe, # of padding):50000,13,37
-Yaaay, got ICMP port unreachable message. At least one port is open.
-attack_burst: (port_start, # of probe, # of padding):50000,7,43
-Yaaay, got ICMP port unreachable message. At least one port is open.
-attack_burst: (port_start, # of probe, # of padding):50000,4,46
-Yaaay, got ICMP port unreachable message. At least one port is open.
-attack_burst: (port_start, # of probe, # of padding):50000,2,48
-Yaaay, got ICMP port unreachable message. At least one port is open.
-attack_burst: (port_start, # of probe, # of padding):50000,1,49
+attack_burst: (port_start, # of probe, # of padding):50000,50,150
 No port is open. IMCP rate limit is already drained.
-attack_burst: (port_start, # of probe, # of padding):50001,1,49
+attack_burst: (port_start, # of probe, # of padding):50050,50,150
 No port is open. IMCP rate limit is already drained.
 no open port found in bin search : -1
-time needed in this iteration of loop: 961 ms
-attack_burst: (port_start, # of probe, # of padding):50050,50,0
+time needed in this iteration of loop: 5380 ms
+attack_burst: (port_start, # of probe, # of padding):50200,200,0
 No port is open. IMCP rate limit is already drained.
 Got reply from do_one_attack_chunk : -1
-time needed in this iteration of loop: 116 ms
+time needed in this iteration of loop: 1305 ms
 Percent	Sum	Calls	Min	Max	Mean	Function
-100.0	1.077	9	0.107	0.167	0.120	do_one_chunk_of_attack
-1.077 Total Time
-----------Iteration 1 is completed.----------
+100.0	12.113	9	1.263	1.488	1.346	do_one_chunk_of_attack
+12.113 Total Time
+----------Iteration 2 is completed.----------
 
-Received 27 packets, got 0 answers, remaining 1 packets
+Received 29 packets, got 0 answers, remaining 1 packets
 
-Received 36 packets, got 0 answers, remaining 1 packets
-Received 16 packets, got 0 answers, remaining 1 packets
-Received 12 packets, got 0 answers, remaining 1 packets
-Received 28 packets, got 0 answers, remaining 1 packets
-Received 39 packets, got 0 answers, remaining 1 packets
-Received 5 packets, got 0 answers, remaining 1 packets
-Received 30 packets, got 0 answers, remaining 1 packets
-Received 7 packets, got 0 answers, remaining 1 packets
-Received 22 packets, got 0 answers, remaining 1 packets
-Received 28 packets, got 0 answers, remaining 1 packets
-Received 23 packets, got 0 answers, remaining 1 packets
-Received 9 packets, got 0 answers, remaining 1 packets
-Received 4 packets, got 0 answers, remaining 1 packets
-Received 37 packets, got 0 answers, remaining 1 packets
-Received 41 packets, got 0 answers, remaining 1 packets
-Received 19 packets, got 0 answers, remaining 1 packets
-Received 7 packets, got 0 answers, remaining 1 packets
-Received 16 packets, got 0 answers, remaining 1 packets----------Iteration 5 is starting.----------
-----------Iteration 10 is starting.----------
-----------Iteration 13 is starting.----------
+Received 26 packets, got 0 answers, remaining 1 packets

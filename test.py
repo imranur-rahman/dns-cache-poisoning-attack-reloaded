@@ -30,7 +30,7 @@ local_free_ip = initialize()
 
 verification_packet = Ether() / IP(dst=forwarder_ip, src=my_ip) / UDP(dport=1)
 
-packets = [raw(Ether() / IP(dst=forwarder_ip, src=RandIP()) / UDP(dport=50000, sport=RandShort())) for i in range(50)]
+packets = [raw(Ether() / IP(dst=forwarder_ip, src=my_ip) / UDP(dport=1, sport=RandShort())) for i in range(200)]
 
 start_time = time.perf_counter()
 for packet in packets:
